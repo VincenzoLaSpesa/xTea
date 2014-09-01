@@ -38,8 +38,10 @@ xTea::xTea(const xTea& orig) {
 }
 
 xTea::~xTea() {
-    fclose (input) ;
-    fclose (output) ;
+	//nothing to do
+
+    //fclose (input) ;
+    //fclose (output) ;
 }
 
 bool xTea::setup(char *input, char *output,uint32_t *chiave){
