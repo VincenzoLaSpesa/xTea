@@ -22,29 +22,39 @@ int main(int argc, char *argv[])
 
 #ifdef DEBUG
     printf("Debug Mode!\n");
-    char *chiavestr="anticlericalismo";//128 bit
     char *input="/home/darshan/Codice/xTea/amleto.txt";
     char *output="/home/darshan/Codice/xTea/output.hex";
     char *replain="/home/darshan/Codice/xTea/replain.txt";
+    char *outputcbc="/home/darshan/Codice/xTea/output_cbc.hex";
+    char *replaincbc="/home/darshan/Codice/xTea/replain_cbc.txt";
+    char *chiavestr="anticlericalismo";//128 bit
 
     uint32_t *k=(uint32_t *)(&chiavestr[0]);
+//encodo
     xTea *coder= new xTea();
     coder->setup(input, output,k);
     coder->encode();
-//
+//decodo
     coder= new xTea();
     coder->setup(output, replain,k);
     coder->decode();
+//encodocbc
+    coder= new xTea();
+    coder->setup(input, outputcbc,k);
+    coder->CBCencode();
+//decodocbc
+    coder= new xTea();
+    coder->setup(outputcbc,replaincbc,k);
+    coder->CBCdecode();
 
 #else
-    FILE *input,*output;
-    char* patternstr=argv[1];
-    input =stdin;
-    output =stdout;
-    if(argc<2){
+    if(argc<3){
 	fprintf(stderr, "%s: operando mancante\n", argv[0]);
 	return -1;
 	}
+
+	//questo è ancora da implementare
+
 #endif
     return EXIT_SUCCESS;
 };

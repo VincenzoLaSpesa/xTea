@@ -1,4 +1,4 @@
-/* 
+/*
  * File:   xTea.h
  * Author: darshan
  *
@@ -16,7 +16,9 @@
 
 class xTea {
 public:
-    int round;
+    static const uint64_t iv=0x1234567890abcdef;
+    static const int round=64;
+
     uint32_t *chiave;
     xTea();
     xTea(const xTea& orig);
@@ -26,11 +28,14 @@ public:
     //uint32_t* getkey(char *string);
     bool encode();
     bool decode();
+    bool CBCencode();
+    bool CBCdecode();
 
 private:
     int nextblock(uint64_t &blocco);
     int pos;
     int size;
+    uint64_t oldblock;
     FILE *input;
     FILE *output;
 };
