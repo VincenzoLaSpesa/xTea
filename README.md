@@ -1,7 +1,6 @@
-# xTea
-A toy implementation of the xTea algorithm
+#xTea
 
-## A naive XTEA (eXtended TEA) implementation.
+##A naive XTEA (eXtended TEA) implementation.
 
 A Cpp implementation of the Xtea block cipher cryptographic algorithms.
 
@@ -15,7 +14,7 @@ It works both in standard "plain" mode and in the more secure CBC (Cipher Block 
 
 The trivial way to compile the files and obtain an executable, is by running the command:
 
-g++ main.cpp functions.cpp xTea.cpp -o xTea.bin
+g++ main.cpp functions.cpp main.cpp xTea.cpp -o xTea
 
 you can also use the makefile
 

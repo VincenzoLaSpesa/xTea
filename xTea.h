@@ -6,7 +6,7 @@
  */
 
 #ifndef _XTEA_H
-#define _XTEA_H
+#define	_XTEA_H
 
 #include <stdint.h>
 #include <cstdlib>
@@ -16,15 +16,15 @@
 
 class xTea {
 public:
-    static const uint64_t iv = 0x1234567890abcdef;
-    static const int round = 64;
+    static const uint64_t iv=0x1234567890abcdef;
+    static const int round=64;
 
     uint32_t *chiave;
     xTea();
     xTea(const xTea& orig);
     virtual ~xTea();
 
-    bool setup(const char* input, const char* output, const uint32_t* chiave);
+    bool setup(char *input, char*output, uint32_t *chiave);
     //uint32_t* getkey(char *string);
     bool encode();
     bool decode();
@@ -40,5 +40,5 @@ private:
     FILE *output;
 };
 
-#endif /* _XTEA_H */
+#endif	/* _XTEA_H */
 
