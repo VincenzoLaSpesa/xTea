@@ -47,7 +47,7 @@ void padfile(char* nomefile){
     pad=size%8;
     f= fopen ( nomefile, "a+" );
     for(;pad>=0;pad--){
-        fwrite ((const void*)c , 1 , sizeof(c) , f );
+        fwrite ((const void*) c , 1 , sizeof(c) , f );
     }
     fclose(f);
 }

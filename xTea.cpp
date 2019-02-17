@@ -65,9 +65,9 @@ xTea::~xTea() {
  * @param chiave
  * @return 
  */
-bool xTea::setup(char *input, char *output, uint32_t *chiave) {
+bool xTea::setup(const char *input, const char *output, const uint32_t *chiave) {
     pos = 0;
-    oldblock = chiave[0]+ (chiave[1] >> 32);
+    oldblock = (chiave[1] >> 32) + chiave[0];
 
     struct stat results;
 
@@ -87,8 +87,9 @@ bool xTea::setup(char *input, char *output, uint32_t *chiave) {
 }
 
 int xTea::nextblock(uint64_t &blocco) {
-    blocco = 0x5f5f5f5f5f5f5f5f; // carattere _
+    blocco = 0;
     int len = fread(&blocco, 1, sizeof (uint64_t), input);
+    printf("%d ", len);
     return len;
 }
 
