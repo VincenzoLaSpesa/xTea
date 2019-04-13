@@ -6,6 +6,9 @@
  */
 
 #include "xTea.h"
+#include <cstdio>
+#include <cstdlib>
+
 #include <sys/stat.h>
 
 /**
@@ -63,18 +66,12 @@ xTea::~xTea() {
  * @param input
  * @param output
  * @param chiave
- * @return 
+ * @return
  */
-bool xTea::setup(char *input, char *output, uint32_t *chiave) {
+bool xTea::setup(const char *input, const char *output, uint32_t *chiave) {
     pos = 0;
     oldblock = chiave[0]+ (chiave[1] >> 32);
 
-    struct stat results;
-
-    if (stat(input, &results) == 0) {
-        this->size = results.st_size;
-    } else
-        return false;
     this->input = fopen(input, "rb");
     this->output = fopen(output, "wb");
     this->chiave = new uint32_t[4];
@@ -86,9 +83,24 @@ bool xTea::setup(char *input, char *output, uint32_t *chiave) {
     return true;
 }
 
-int xTea::nextblock(uint64_t &blocco) {
-    blocco = 0x5f5f5f5f5f5f5f5f; // carattere _
+/**
+ * Leggo il prossimo blocco. Se si tratta del blocco finale faccio un padding PCKS5
+ * (https://www.ietf.org/rfc/rfc1423.txt https://www.di-mgt.com.au/cryptopad.html )
+ * @param blocco
+ * @return
+ */
+int xTea::readNextBlock(uint64_t &blocco, const bool doPad) {
+    blocco = 0; // carattere _
     int len = fread(&blocco, 1, sizeof (uint64_t), input);
+    printf("%d ", len);
+    if (len > 0 && doPad && len<sizeof (uint64_t)) {
+        unsigned char* data = (unsigned char*) &blocco;
+        const unsigned char c = sizeof (uint64_t) - len;
+        while (len<sizeof (uint64_t)) {
+            data[len] = c;
+            len++;
+        }
+    }
     return len;
 }
 
@@ -96,10 +108,19 @@ bool xTea::encode() {
     uint64_t blocco;
     uint32_t *pezzi;
     pezzi = (uint32_t *) & blocco;
-    while (this->nextblock(blocco) > 0) {
+    int len;
+    do {
+        len = fread(&blocco, 1, sizeof (uint64_t), input);
+        if (len > 0 && len < sizeof (uint64_t) == 0) {
+            const unsigned char c = sizeof (uint64_t) - len;
+            while (len<sizeof (uint64_t)) {
+                pezzi[len] = c;
+                len++;
+            }
+        }
         encipher(this->round, pezzi, chiave);
         fwrite((void*) &blocco, 1, sizeof (blocco), output);
-    }
+    } while (len > 0);
     fclose(input);
     fclose(output);
     return true;
@@ -109,7 +130,7 @@ bool xTea::decode() {
     uint64_t blocco;
     uint32_t *pezzi;
     pezzi = (uint32_t *) & blocco;
-    while (this->nextblock(blocco) > 0) {
+    while (this->readNextBlock(blocco, false) > 0) {
         decipher(this->round, pezzi, chiave);
         fwrite((void*) &blocco, 1, sizeof (blocco), output);
     }
@@ -122,7 +143,7 @@ bool xTea::CBCencode() {
     uint64_t blocco;
     uint32_t *pezzi;
     pezzi = (uint32_t *) & blocco;
-    while (this->nextblock(blocco) > 0) {
+    while (this->readNextBlock(blocco) > 0) {
         encipher(this->round, pezzi, chiave);
         blocco = blocco^oldblock;
         fwrite((void*) &blocco, 1, sizeof (blocco), output);
@@ -138,7 +159,7 @@ bool xTea::CBCdecode() {
     uint64_t buffer;
     uint32_t *pezzi;
     pezzi = (uint32_t *) & blocco;
-    while (this->nextblock(blocco) > 0) {
+    while (this->readNextBlock(blocco) > 0) {
         buffer = blocco;
         blocco = blocco^oldblock;
         decipher(this->round, pezzi, chiave);
@@ -148,4 +169,50 @@ bool xTea::CBCdecode() {
     fclose(input);
     fclose(output);
     return true;
+}
+
+DataLayer::DataLayer(const char * filename, const bool intentWrite)
+{
+    if(intentWrite)
+        file = fopen(filename, "wb");
+    else
+        file = fopen(filename, "rb");
+}
+
+DataLayer::~DataLayer()
+{
+    close();
+}
+
+void DataLayer::close()
+{
+    fclose(file);
+}
+
+bool DataLayer::writeBlock(const uint64_t blocco)
+{
+    int n = fwrite((void*) &blocco, 1, sizeof(blocco), file);
+    return n==sizeof (blocco);
+}
+
+bool DataLayer::readBlock(uint64_t & blocco)
+{
+    blocco = 0;
+    int len = fread(&blocco, 1, sizeof (uint64_t), file);
+    if(!feof(stdin)){
+        pad=len < sizeof(uint64_t);
+        if(pad) {
+            unsigned char* data = (unsigned char*) &blocco;
+            while (len<sizeof (uint64_t)) {
+                data[len] = pad;
+                len++;
+            }
+        }
+        return true;
+    }// we reached the end of the file. If in the last block pad==0 i need to write another filling block
+    if(pad==0){
+        blocco = 0x0808080808080808;
+    }else{
+        return false;
+    }
 }

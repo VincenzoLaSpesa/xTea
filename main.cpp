@@ -44,37 +44,30 @@ int main(int argc, char *argv[])
 
 #ifdef DEBUG
     printf("Debug Mode!\n");
-    char *input="/home/darshan/Codice/xTea/amleto.txt";
-    char *output="/home/darshan/Codice/xTea/output.hex";
-    char *replain="/home/darshan/Codice/xTea/replain.txt";
-    char *outputcbc="/home/darshan/Codice/xTea/output_cbc.hex";
-    char *replaincbc="/home/darshan/Codice/xTea/replain_cbc.txt";
-    char *chiavestr="anticlericalismo";//128 bit
+    const char *input="in.txt";
+    const char *output="output.hex";
+    const char *replain="replain.txt";
+    const char *outputcbc="output_cbc.hex";
+    const char *replaincbc="replain_cbc.txt";
+    const char *chiavestr="anticlericalismo";//128 bit
 
     uint32_t *k=(uint32_t *)(&chiavestr[0]);
 //encodo
-    xTea *coder= new xTea();
-    coder->setup(input, output,k);
-    coder->encode();
-    delete coder;
-
+    xTea coder= xTea();
+    coder.setup(input, output,k);
+    coder.encode();
 //decodo
-    coder= new xTea();
-    coder->setup(output, replain,k);
-    coder->decode();
-    delete coder;
-
+    coder= xTea();
+    coder.setup(output, replain,k);
+    coder.decode();
 //encodocbc
-    coder= new xTea();
-    coder->setup(input, outputcbc,k);
-    coder->CBCencode();
-    delete coder;
-
+    coder= xTea();
+    coder.setup(input, outputcbc,k);
+    coder.CBCencode();
 //decodocbc
-    coder= new xTea();
-    coder->setup(outputcbc,replaincbc,k);
-    coder->CBCdecode();
-    delete coder;
+    coder= xTea();
+    coder.setup(outputcbc,replaincbc,k);
+    coder.CBCdecode();
 
 
 #else

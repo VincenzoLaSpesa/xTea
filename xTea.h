@@ -24,7 +24,7 @@ public:
     xTea(const xTea& orig);
     virtual ~xTea();
 
-    bool setup(char *input, char*output, uint32_t *chiave);
+    bool setup(const char *input, const char*output, uint32_t *chiave);
     //uint32_t* getkey(char *string);
     bool encode();
     bool decode();
@@ -32,12 +32,24 @@ public:
     bool CBCdecode();
 
 private:
-    int nextblock(uint64_t &blocco);
+    int readNextBlock(uint64_t &blocco, const bool doPad=false);
     int pos;
     int size;
     uint64_t oldblock;
     FILE *input;
     FILE *output;
+};
+
+class DataLayer{
+public:
+    DataLayer(const char *filename, const bool intentWrite);
+    ~DataLayer();
+    bool writeBlock(const uint64_t blocco);
+    bool readBlock(uint64_t &blocco);
+    void close();
+private:
+    FILE *file;
+    short pad = -1;
 };
 
 #endif	/* _XTEA_H */
