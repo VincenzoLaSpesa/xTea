@@ -5,52 +5,51 @@
  * Created on 24 febbraio 2011, 13.17
  */
 
-#ifndef _XTEA_H
-#define	_XTEA_H
+#pragma once
 
-#include <stdint.h>
-#include <cstdlib>
 #include <iostream>
-#include <cstring>
-#include <stdio.h>
+#include <fstream>
+
+/**
+* PCKS5 padding (https://www.ietf.org/rfc/rfc1423.txt https://www.di-mgt.com.au/cryptopad.html )
+*/
+class DataLayer{
+public:
+    DataLayer();
+    DataLayer(const char *filename);
+    ~DataLayer();
+    bool Setup(const char *filename);
+    int ReadBlock(uint64_t *blocco);
+	void SetPaddingStatus(bool isSourcePadded);
+    void close();
+private:
+	std::ifstream file_;
+    short pad_ = 0;
+	bool isSourcePadded_ = false;
+};
 
 class xTea {
 public:
     static const uint64_t iv=0x1234567890abcdef;
     static const int round=64;
 
-    uint32_t *chiave;
     xTea();
-    xTea(const xTea& orig);
-    virtual ~xTea();
+	~xTea();
 
-    bool setup(const char *input, const char*output, uint32_t *chiave);
-    //uint32_t* getkey(char *string);
-    bool encode();
-    bool decode();
-    bool CBCencode();
-    bool CBCdecode();
-
+    bool Setup(const char *input, const char*output,const uint32_t *chiave);
+    bool Encode();
+    bool Decode();
+    bool CBCEncode();
+    bool CBCDecode();
+	bool Dup(bool isInputPadded);
 private:
-    int readNextBlock(uint64_t &blocco, const bool doPad=false);
-    int pos;
-    int size;
-    uint64_t oldblock;
-    FILE *input;
-    FILE *output;
+	//! Apply PCKS5 padding (https://www.ietf.org/rfc/rfc1423.txt https://www.di-mgt.com.au/cryptopad.html )
+	short pad(uint64_t *blocco, short blockSize);
+	//! Remove PCKS5 padding 
+	short unPad(const uint64_t *blocco) const;
+	uint32_t chiave_[4];
+	uint64_t oldblock_;
+	std::ifstream reader_;
+	std::ofstream writer_;
 };
-
-class DataLayer{
-public:
-    DataLayer(const char *filename, const bool intentWrite);
-    ~DataLayer();
-    bool writeBlock(const uint64_t blocco);
-    bool readBlock(uint64_t &blocco);
-    void close();
-private:
-    FILE *file;
-    short pad = -1;
-};
-
-#endif	/* _XTEA_H */
 

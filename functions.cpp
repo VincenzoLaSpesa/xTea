@@ -33,21 +33,3 @@ int hextoary(char* hexstring,int* buffer){
     }
     return 1;
 };
-
-void padfile(char* nomefile){
-    struct stat results;
-    int size;
-    int pad;
-    FILE *f;
-    char c='!';
-
-    if(stat(nomefile, &results) == 0){
-        size=results.st_size;
-    }
-    pad=size%8;
-    f= fopen ( nomefile, "a+" );
-    for(;pad>=0;pad--){
-        fwrite ((const void*)c , 1 , sizeof(c) , f );
-    }
-    fclose(f);
-}

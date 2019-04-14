@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cstring>
 #include <stdio.h>
+#include <direct.h>
 
 #define DEBUG
 
@@ -35,6 +36,12 @@ bool cmdOptionExists(char** begin, char** end, const std::string& option)
     return std::find(begin, end, option) != end;
 
 }
+
+std::string GetCurrentWorkingDir(void) {
+	char buff[FILENAME_MAX];
+	_getcwd(buff, FILENAME_MAX);
+	return std::string{ buff };
+}
 //
 
 
@@ -43,31 +50,48 @@ int main(int argc, char *argv[])
 
 
 #ifdef DEBUG
-    printf("Debug Mode!\n");
+	std::cout << "Debug Mode!\n" << "running from " << GetCurrentWorkingDir().c_str() << std::endl;
     const char *input="in.txt";
-    const char *output="output.hex";
+	const char *dup = "dup.hex";
+	const char *dup2 = "dup2.txt";
+	const char *output="output.hex";
     const char *replain="replain.txt";
     const char *outputcbc="output_cbc.hex";
     const char *replaincbc="replain_cbc.txt";
-    const char *chiavestr="anticlericalismo";//128 bit
+    const char *chiavestr="incomprehensible";//128 bit
 
     uint32_t *k=(uint32_t *)(&chiavestr[0]);
+	xTea xtea{};
+	bool flag;
+//dup (testo il padding)
+	printf("Dup1 \n");
+	flag = xtea.Setup(input, dup, k);
+	if (!flag) return -1;
+	xtea.Dup(false);
+	printf("Dup2 \n");
+	flag = xtea.Setup(dup,dup2, k);
+	if (!flag) return -1;
+	xtea.Dup(true);
 //encodo
-    xTea coder= xTea();
-    coder.setup(input, output,k);
-    coder.encode();
+	printf("Encode plain \n");
+    flag=xtea.Setup(input, output,k);
+	if (!flag) return -1;
+    xtea.Encode();
 //decodo
-    coder= xTea();
-    coder.setup(output, replain,k);
-    coder.decode();
+	printf("Decode plain\n");
+	flag = xtea.Setup(output, replain,k);
+	if (!flag) return -1;
+	xtea.Decode();
 //encodocbc
-    coder= xTea();
-    coder.setup(input, outputcbc,k);
-    coder.CBCencode();
+	printf("Encode cbc\n");
+	flag = xtea.Setup(input, outputcbc,k);
+	if (!flag) return -1;
+	xtea.CBCEncode();
 //decodocbc
-    coder= xTea();
-    coder.setup(outputcbc,replaincbc,k);
-    coder.CBCdecode();
+	printf("Decode cbc\n");
+	flag = xtea.Setup(outputcbc,replaincbc,k);
+	if (!flag) return -1;
+	xtea.CBCDecode();
 
 
 #else

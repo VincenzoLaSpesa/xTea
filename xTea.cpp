@@ -6,11 +6,10 @@
  */
 
 #include "xTea.h"
-#include <cstdio>
-#include <cstdlib>
-
-#include <sys/stat.h>
-
+#include <fstream>
+#include <iostream>
+#include <ios>
+#include <array>
 /**
  * Implementazione originale di David Wheeler e Roger Needham corretta in modo da utilizzare interi da 32bit su ogni architettura
  * @param num_rounds
@@ -50,15 +49,10 @@ void decipher(unsigned int num_rounds, uint32_t v[2], uint32_t const k[4]) {
 xTea::xTea() {
 }
 
-/**
- * Costruttore di copie
- * @param orig
- */
-xTea::xTea(const xTea& orig) {
-}
-
-xTea::~xTea() {
-    //nothing to do
+xTea::~xTea()
+{
+	reader_.close();
+	writer_.close();
 }
 
 /**
@@ -68,151 +62,162 @@ xTea::~xTea() {
  * @param chiave
  * @return
  */
-bool xTea::setup(const char *input, const char *output, uint32_t *chiave) {
-    pos = 0;
-    oldblock = chiave[0]+ (chiave[1] >> 32);
+bool xTea::Setup(const char *input, const char *output, const uint32_t *chiave) {
+    oldblock_ = chiave[0]+ (chiave[1] >> 32);
+	bool flag = this->reader_.Setup(input);
+	this->writer_.open(output, std::ios::binary | std::ios::out);
+	flag &= !writer_.bad();
+	memcpy(chiave_, chiave, 4 * sizeof(uint32_t));
+    return flag;
+}
 
-    this->input = fopen(input, "rb");
-    this->output = fopen(output, "wb");
-    this->chiave = new uint32_t[4];
-    this->chiave[0] = chiave[0];
-    this->chiave[1] = chiave[1];
-    this->chiave[2] = chiave[2];
-    this->chiave[3] = chiave[3];
-
+bool xTea::Encode() {
+	uint64_t blocco;
+	char *data = (char*)&blocco;
+    uint32_t *pezzi;
+    pezzi = (uint32_t *)&blocco;
+	reader_.SetPaddingStatus(false);
+	short blockSize;
+	while(blockSize = reader_.ReadBlock(&blocco) , blockSize > 0){
+		encipher(this->round, pezzi, chiave_);
+		writer_.write(data, blockSize);
+	}
+	writer_.close();
+	reader_.close();
     return true;
 }
 
-/**
- * Leggo il prossimo blocco. Se si tratta del blocco finale faccio un padding PCKS5
- * (https://www.ietf.org/rfc/rfc1423.txt https://www.di-mgt.com.au/cryptopad.html )
- * @param blocco
- * @return
- */
-int xTea::readNextBlock(uint64_t &blocco, const bool doPad) {
-    blocco = 0; // carattere _
-    int len = fread(&blocco, 1, sizeof (uint64_t), input);
-    printf("%d ", len);
-    if (len > 0 && doPad && len<sizeof (uint64_t)) {
-        unsigned char* data = (unsigned char*) &blocco;
-        const unsigned char c = sizeof (uint64_t) - len;
-        while (len<sizeof (uint64_t)) {
-            data[len] = c;
-            len++;
-        }
-    }
-    return len;
+bool xTea::Decode() {
+	uint64_t blocco;
+	char *data = (char*)&blocco;
+	uint32_t *pezzi;
+    pezzi = (uint32_t *) &blocco;
+	reader_.SetPaddingStatus(true);
+	short blockSize = 0;
+	while (blockSize = reader_.ReadBlock(&blocco), blockSize > 0) {
+		decipher(this->round, pezzi, chiave_);
+		writer_.write(data, blockSize);
+		std::cout << data;
+	}
+	writer_.close();
+	reader_.close();
+    return true;
 }
 
-bool xTea::encode() {
-    uint64_t blocco;
+bool xTea::CBCEncode() {
+	uint64_t blocco;
+	char *data = (char*)&blocco;
     uint32_t *pezzi;
     pezzi = (uint32_t *) & blocco;
-    int len;
-    do {
-        len = fread(&blocco, 1, sizeof (uint64_t), input);
-        if (len > 0 && len < sizeof (uint64_t) == 0) {
-            const unsigned char c = sizeof (uint64_t) - len;
-            while (len<sizeof (uint64_t)) {
-                pezzi[len] = c;
-                len++;
-            }
-        }
-        encipher(this->round, pezzi, chiave);
-        fwrite((void*) &blocco, 1, sizeof (blocco), output);
-    } while (len > 0);
-    fclose(input);
-    fclose(output);
+	reader_.SetPaddingStatus(false);
+	short blockSize;
+	while (blockSize = reader_.ReadBlock(&blocco), blockSize > 0) {
+		encipher(this->round, pezzi, chiave_);
+		blocco = blocco ^ oldblock_;
+		writer_.write(data, blockSize);
+		oldblock_ = blocco;
+	}
+	writer_.close();
+	reader_.close();
     return true;
 }
 
-bool xTea::decode() {
-    uint64_t blocco;
-    uint32_t *pezzi;
-    pezzi = (uint32_t *) & blocco;
-    while (this->readNextBlock(blocco, false) > 0) {
-        decipher(this->round, pezzi, chiave);
-        fwrite((void*) &blocco, 1, sizeof (blocco), output);
-    }
-    fclose(input);
-    fclose(output);
-    return true;
-}
-
-bool xTea::CBCencode() {
-    uint64_t blocco;
-    uint32_t *pezzi;
-    pezzi = (uint32_t *) & blocco;
-    while (this->readNextBlock(blocco) > 0) {
-        encipher(this->round, pezzi, chiave);
-        blocco = blocco^oldblock;
-        fwrite((void*) &blocco, 1, sizeof (blocco), output);
-        oldblock = blocco;
-    }
-    fclose(input);
-    fclose(output);
-    return true;
-}
-
-bool xTea::CBCdecode() {
-    uint64_t blocco;
+bool xTea::CBCDecode() {
+	uint64_t blocco;
+	char *data = (char*)&blocco;
     uint64_t buffer;
     uint32_t *pezzi;
-    pezzi = (uint32_t *) & blocco;
-    while (this->readNextBlock(blocco) > 0) {
-        buffer = blocco;
-        blocco = blocco^oldblock;
-        decipher(this->round, pezzi, chiave);
-        fwrite((void*) &blocco, 1, sizeof (blocco), output);
-        oldblock = buffer;
-    }
-    fclose(input);
-    fclose(output);
+    pezzi = (uint32_t *)&blocco;
+	reader_.SetPaddingStatus(true);
+	short blockSize = 0;
+	while (blockSize = reader_.ReadBlock(&blocco), blockSize > 0) {
+		buffer = blocco;
+		blocco = blocco ^ oldblock_;
+		decipher(this->round, pezzi, chiave_);
+		writer_.write(data, blockSize);
+		oldblock_ = buffer;
+	}
+	writer_.close();
+	reader_.close();
     return true;
 }
 
-DataLayer::DataLayer(const char * filename, const bool intentWrite)
+bool xTea::Dup(bool isInputPadded)
 {
-    if(intentWrite)
-        file = fopen(filename, "wb");
-    else
-        file = fopen(filename, "rb");
+	uint64_t blocco=0;
+	char *data = (char*)&blocco;
+	reader_.SetPaddingStatus(isInputPadded);
+	short blockSize;
+	while (blockSize = reader_.ReadBlock(&blocco), blockSize > 0) {
+		writer_.write(data, blockSize);
+		std::cout.write(data, blockSize);
+		std::cout << std::endl;
+	}
+	writer_.close();
+	reader_.close();
+	return true;
+}
+
+DataLayer::DataLayer(){
+}
+
+bool DataLayer::Setup(const char * filename)
+{
+	file_.open(filename, std::ios::binary | std::ios::in);
+	isSourcePadded_ = false;
+	return file_.is_open();
+}
+
+DataLayer::DataLayer(const char * filename){
+    Setup(filename);
 }
 
 DataLayer::~DataLayer()
 {
-    close();
+	close();
 }
 
 void DataLayer::close()
 {
-    fclose(file);
+	pad_ = 0;
+	file_.close();
 }
 
-bool DataLayer::writeBlock(const uint64_t blocco)
+int DataLayer::ReadBlock(uint64_t *blocco)
 {
-    int n = fwrite((void*) &blocco, 1, sizeof(blocco), file);
-    return n==sizeof (blocco);
+	*blocco = 0;
+	char *data = (char*)blocco;
+	file_.read(data, sizeof(uint64_t));
+	std::streamsize len = file_.gcount();
+    if(file_.eof()){// Reached the end of the file
+		if (pad_ < 0)
+			return 0;
+		if (!isSourcePadded_){ // Source is not padded, create the filling block
+			pad_ = sizeof(uint64_t) - len;
+			if (pad_ == 0) {
+				*blocco = 0x0808080808080808;
+			}
+			else {
+				while (len < sizeof(uint64_t)) {
+					data[len] = pad_;
+					len++;
+				}
+			}
+			pad_ = -1;
+		}
+	}
+	else if(isSourcePadded_){ // What if we are just before the eof?
+		file_.peek();
+		if(file_.eof()) { //source is already padded, cut the padding block
+			int stub = data[sizeof(uint64_t) - 1];
+			pad_ = -1;
+			return sizeof(uint64_t) - stub;
+		}
+	}
+	return sizeof(uint64_t);
 }
 
-bool DataLayer::readBlock(uint64_t & blocco)
+void DataLayer::SetPaddingStatus(bool isSourcePadded)
 {
-    blocco = 0;
-    int len = fread(&blocco, 1, sizeof (uint64_t), file);
-    if(!feof(stdin)){
-        pad=len < sizeof(uint64_t);
-        if(pad) {
-            unsigned char* data = (unsigned char*) &blocco;
-            while (len<sizeof (uint64_t)) {
-                data[len] = pad;
-                len++;
-            }
-        }
-        return true;
-    }// we reached the end of the file. If in the last block pad==0 i need to write another filling block
-    if(pad==0){
-        blocco = 0x0808080808080808;
-    }else{
-        return false;
-    }
+	isSourcePadded_ = isSourcePadded;
 }
