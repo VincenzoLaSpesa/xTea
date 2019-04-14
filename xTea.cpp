@@ -16,7 +16,7 @@
  * @param v
  * @param k
  */
-void encipher(unsigned int num_rounds, uint32_t v[2], uint32_t const k[4]) {
+void Encipher(unsigned int num_rounds, uint32_t v[2], uint32_t const k[4]) {
     unsigned int i;
     uint32_t v0 = v[0], v1 = v[1], sum = 0, delta = 0x9E3779B9;
     for (i = 0; i < num_rounds; i++) {
@@ -34,7 +34,7 @@ void encipher(unsigned int num_rounds, uint32_t v[2], uint32_t const k[4]) {
  * @param v
  * @param k
  */
-void decipher(unsigned int num_rounds, uint32_t v[2], uint32_t const k[4]) {
+void Decipher(unsigned int num_rounds, uint32_t v[2], uint32_t const k[4]) {
     unsigned int i;
     uint32_t v0 = v[0], v1 = v[1], delta = 0x9E3779B9, sum = delta*num_rounds;
     for (i = 0; i < num_rounds; i++) {
@@ -64,98 +64,117 @@ xTea::~xTea()
  */
 bool xTea::Setup(const char *input, const char *output, const uint32_t *chiave) {
     oldblock_ = chiave[0]+ (chiave[1] >> 32);
-	bool flag = this->reader_.Setup(input);
-	this->writer_.open(output, std::ios::binary | std::ios::out);
-	flag &= !writer_.bad();
+	this->reader_.open(output, std::ios::binary | std::ios::in);
+	this->writer_.open(output, std::ios::binary | std::ios::out);	
 	memcpy(chiave_, chiave, 4 * sizeof(uint32_t));
-    return flag;
+    return !(writer_.bad() || reader_.bad());
 }
 
-bool xTea::Encode() {
+bool xTea::Encode(bool cbc) {
 	uint64_t blocco;
 	char *data = (char*)&blocco;
     uint32_t *pezzi;
     pezzi = (uint32_t *)&blocco;
-	reader_.SetPaddingStatus(false);
 	short blockSize;
-	while(blockSize = reader_.ReadBlock(&blocco) , blockSize > 0){
-		encipher(this->round, pezzi, chiave_);
-		writer_.write(data, blockSize);
+	while (reader_.read(data, sizeof(uint64_t))) {
+		blockSize = reader_.gcount();
+		if (reader_.eof()) //Pad last block
+			blockSize=pad(data, blockSize);
+		encipher(pezzi);
+		if (cbc) {
+			blocco = blocco ^ oldblock_;
+			oldblock_ = blocco;
+		}
+		writer_.write(data, sizeof(uint64_t));
+		if (blockSize < 0) { //source is not paddable, add a dummy block
+			blocco = 0x0808080808080808;
+			writer_.write(data, sizeof(uint64_t));
+		}
 	}
 	writer_.close();
 	reader_.close();
     return true;
 }
 
-bool xTea::Decode() {
+bool xTea::Decode(bool cbc) {
 	uint64_t blocco;
 	char *data = (char*)&blocco;
 	uint32_t *pezzi;
     pezzi = (uint32_t *) &blocco;
-	reader_.SetPaddingStatus(true);
-	short blockSize = 0;
-	while (blockSize = reader_.ReadBlock(&blocco), blockSize > 0) {
-		decipher(this->round, pezzi, chiave_);
+	short blockSize;
+	while (reader_.read(data, sizeof(uint64_t))) {
+		if (reader_.gcount() < sizeof(uint64_t))
+			return false; // This is bad! this file should be padded
+		decipher(pezzi);
+		reader_.peek();
+		if (reader_.eof()) // Remove padding from last block
+			blockSize = unPad(data);
 		writer_.write(data, blockSize);
-		std::cout << data;
 	}
 	writer_.close();
 	reader_.close();
     return true;
 }
 
-bool xTea::CBCEncode() {
+bool xTea::Dup(bool isInputPadded){
 	uint64_t blocco;
 	char *data = (char*)&blocco;
-    uint32_t *pezzi;
-    pezzi = (uint32_t *) & blocco;
-	reader_.SetPaddingStatus(false);
+	uint32_t *pezzi;
+	pezzi = (uint32_t *)&blocco;
 	short blockSize;
-	while (blockSize = reader_.ReadBlock(&blocco), blockSize > 0) {
-		encipher(this->round, pezzi, chiave_);
-		blocco = blocco ^ oldblock_;
-		writer_.write(data, blockSize);
-		oldblock_ = blocco;
-	}
-	writer_.close();
-	reader_.close();
-    return true;
-}
-
-bool xTea::CBCDecode() {
-	uint64_t blocco;
-	char *data = (char*)&blocco;
-    uint64_t buffer;
-    uint32_t *pezzi;
-    pezzi = (uint32_t *)&blocco;
-	reader_.SetPaddingStatus(true);
-	short blockSize = 0;
-	while (blockSize = reader_.ReadBlock(&blocco), blockSize > 0) {
-		buffer = blocco;
-		blocco = blocco ^ oldblock_;
-		decipher(this->round, pezzi, chiave_);
-		writer_.write(data, blockSize);
-		oldblock_ = buffer;
-	}
-	writer_.close();
-	reader_.close();
-    return true;
-}
-
-bool xTea::Dup(bool isInputPadded)
-{
-	uint64_t blocco=0;
-	char *data = (char*)&blocco;
-	reader_.SetPaddingStatus(isInputPadded);
-	short blockSize;
-	while (blockSize = reader_.ReadBlock(&blocco), blockSize > 0) {
-		writer_.write(data, blockSize);
-		std::cout.write(data, blockSize);
-		std::cout << std::endl;
+	while (reader_.read(data, sizeof(uint64_t))) {
+		blockSize = reader_.gcount();
+		if (!isInputPadded) {
+			if(reader_.eof())//Pad last block
+				blockSize = pad(data, blockSize);
+		}
+		else {
+			if (blockSize < sizeof(uint64_t))
+				return false; // This is bad! this file should be padded
+			reader_.peek();
+			if (reader_.eof()) // Remove padding from last block
+				blockSize = unPad(data);
+		}
+		writer_.write(data, sizeof(uint64_t));
+		if (blockSize < 0) { //source is not paddable, add a dummy block
+			blocco = 0x0808080808080808;
+			writer_.write(data, sizeof(uint64_t));
+		}
 	}
 	writer_.close();
 	reader_.close();
 	return true;
+}
+
+short xTea::pad(char* data, short blockSize)
+{
+	short pad = sizeof(uint64_t) - blockSize;
+	if (pad == 0) {
+		return -1;
+	}
+	else {
+		while (blockSize < sizeof(uint64_t)) {
+			data[blockSize] = pad;
+			blockSize++;
+		}
+	}
+	return pad;
+}
+
+short xTea::unPad(const char *data) const
+{
+	int stub = data[sizeof(uint64_t) - 1];
+	return sizeof(uint64_t) - stub;
+}
+
+void xTea::encipher(uint32_t v[2])
+{
+	Encipher(this->round, v, this->chiave_);
+}
+
+void xTea::decipher(uint32_t v[2])
+{
+	Decipher(this->round, v, this->chiave_);
 }
 
 DataLayer::DataLayer(){

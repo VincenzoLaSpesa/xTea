@@ -37,16 +37,16 @@ public:
 	~xTea();
 
     bool Setup(const char *input, const char*output,const uint32_t *chiave);
-    bool Encode();
-    bool Decode();
-    bool CBCEncode();
-    bool CBCDecode();
+    bool Encode(bool cbc=false);
+    bool Decode(bool cbc=false);
 	bool Dup(bool isInputPadded);
 private:
 	//! Apply PCKS5 padding (https://www.ietf.org/rfc/rfc1423.txt https://www.di-mgt.com.au/cryptopad.html )
-	short pad(uint64_t *blocco, short blockSize);
+	short pad(char *data, short blockSize);
 	//! Remove PCKS5 padding 
-	short unPad(const uint64_t *blocco) const;
+	short unPad(const char *data) const;
+	void encipher(uint32_t v[2]);
+	void decipher(uint32_t v[2]);
 	uint32_t chiave_[4];
 	uint64_t oldblock_;
 	std::ifstream reader_;

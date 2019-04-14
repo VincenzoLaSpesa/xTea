@@ -76,22 +76,22 @@ int main(int argc, char *argv[])
 	printf("Encode plain \n");
     flag=xtea.Setup(input, output,k);
 	if (!flag) return -1;
-    xtea.Encode();
+    xtea.Encode(false);
 //decodo
 	printf("Decode plain\n");
 	flag = xtea.Setup(output, replain,k);
 	if (!flag) return -1;
-	xtea.Decode();
+	xtea.Decode(false);
 //encodocbc
 	printf("Encode cbc\n");
 	flag = xtea.Setup(input, outputcbc,k);
 	if (!flag) return -1;
-	xtea.CBCEncode();
+	xtea.Encode(true);
 //decodocbc
 	printf("Decode cbc\n");
 	flag = xtea.Setup(outputcbc,replaincbc,k);
 	if (!flag) return -1;
-	xtea.CBCDecode();
+	xtea.Decode(true);
 
 
 #else
