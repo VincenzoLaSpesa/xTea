@@ -1,16 +1,19 @@
-all: hello
+all: target
 
-hello: main.o functions.o xTea.o
-	g++ main.o functions.o xTea.o -o xTea.bin
+debug: CXXFLAGS = -DDEBUG -g
+debug: target
+
+target: main.o functions.o xTea.o
+	$(CXX) main.o functions.o xTea.o -o xTea.bin
 
 main.o: main.cpp
-	g++ -c main.cpp
+	$(CXX) $(CXXFLAGS) -c main.cpp
 
 functions.o: functions.cpp
-	g++ -c functions.cpp
+	$(CXX) $(CXXFLAGS) -c functions.cpp
 
 xTea.o: xTea.cpp
-	g++ -c xTea.cpp
+	$(CXX) $(CXXFLAGS) -c xTea.cpp
 
 clean:
 	rm -rf *.o 

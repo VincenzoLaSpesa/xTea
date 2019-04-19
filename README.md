@@ -1,6 +1,6 @@
 #xTea
 
-##A naive XTEA (eXtended TEA) implementation.
+## A naive XTEA (eXtended TEA) implementation.
 
 A Cpp implementation of the Xtea block cipher cryptographic algorithms.
 

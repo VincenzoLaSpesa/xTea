@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cstring>
 #include <stdio.h>
+#include <direct.h>
 
 #define DEBUG
 
@@ -20,76 +21,92 @@
 
 //http://stackoverflow.com/a/868894
 
-char* getCmdOption(char ** begin, char ** end, const std::string & option)
-{
+char* getCmdOption(char ** begin, char ** end, const std::string & option) {
     char ** itr = std::find(begin, end, option);
-    if (itr != end && ++itr != end)
-    {
+    if (itr != end && ++itr != end) {
         return *itr;
     }
     return 0;
 }
 
-bool cmdOptionExists(char** begin, char** end, const std::string& option)
-{
+bool cmdOptionExists(char** begin, char** end, const std::string& option) {
     return std::find(begin, end, option) != end;
 
+}
+
+std::string GetCurrentWorkingDir(void) {
+    char buff[FILENAME_MAX];
+    _getcwd(buff, FILENAME_MAX);
+    return std::string{ buff };
 }
 //
 
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
 
 
 #ifdef DEBUG
-    printf("Debug Mode!\n");
-    char *input="/home/darshan/Codice/xTea/amleto.txt";
-    char *output="/home/darshan/Codice/xTea/output.hex";
-    char *replain="/home/darshan/Codice/xTea/replain.txt";
-    char *outputcbc="/home/darshan/Codice/xTea/output_cbc.hex";
-    char *replaincbc="/home/darshan/Codice/xTea/replain_cbc.txt";
-    char *chiavestr="anticlericalismo";//128 bit
+    std::cout << "Debug Mode!\n" << "running from " << GetCurrentWorkingDir().c_str() << std::endl;
+    const char *input="in.txt";
+    const char *dup = "pad.hex";
+    const char *dup2 = "unpad.txt";
+    const char *output="output.hex";
+    const char *replain="replain.txt";
+    const char *outputcbc="output_cbc.hex";
+    const char *replaincbc="replain_cbc.txt";
+    const char *chiavestr="incomprehensible";//128 bit
 
     uint32_t *k=(uint32_t *)(&chiavestr[0]);
+    xTea xtea{};
+    bool flag;
+//dup (testo il padding)
+    printf("Dup1 \n");
+    flag = xtea.Setup(input, dup, k);
+    if (!flag)
+        return -1;
+    xtea.Dup(true);
+    printf("Dup2 \n");
+    flag = xtea.Setup(dup,dup2, k);
+    if (!flag)
+        return -1;
+    xtea.Dup(false);
 //encodo
-    xTea *coder= new xTea();
-    coder->setup(input, output,k);
-    coder->encode();
-    delete coder;
-
+    printf("Encode plain \n");
+    flag=xtea.Setup(input, output,k);
+    if (!flag)
+        return -1;
+    xtea.Encode(false);
 //decodo
-    coder= new xTea();
-    coder->setup(output, replain,k);
-    coder->decode();
-    delete coder;
-
+    printf("Decode plain\n");
+    flag = xtea.Setup(output, replain,k);
+    if (!flag)
+        return -1;
+    xtea.Decode(false);
 //encodocbc
-    coder= new xTea();
-    coder->setup(input, outputcbc,k);
-    coder->CBCencode();
-    delete coder;
-
+    printf("Encode cbc\n");
+    flag = xtea.Setup(input, outputcbc,k);
+    if (!flag)
+        return -1;
+    xtea.Encode(true);
 //decodocbc
-    coder= new xTea();
-    coder->setup(outputcbc,replaincbc,k);
-    coder->CBCdecode();
-    delete coder;
-
+    printf("Decode cbc\n");
+    flag = xtea.Setup(outputcbc,replaincbc,k);
+    if (!flag)
+        return -1;
+    xtea.Decode(true);
 
 #else
-if(!(cmdOptionExists(argv, argv+argc, "-i") && cmdOptionExists(argv, argv+argc, "-o")))
-    {
-	fprintf(stderr, "Parametri non validi:\n");
-	fprintf(stderr, "	xTea.bin -i input -o output opzioni\n");
-	fprintf(stderr, "opzioni può essere: \n");
-	fprintf(stderr, "	-e per codificare \n");
-	fprintf(stderr, "	-d per decodificare \n");
-	fprintf(stderr, "	-cbc per attivare cbc \n");
-	return -1;
+    if(!(cmdOptionExists(argv, argv+argc, "-i") && cmdOptionExists(argv, argv+argc, "-o"))) {
+        fprintf(stderr, "Parametri non validi:\n");
+        fprintf(stderr, "	xTea.bin -i input -o output opzioni\n");
+        fprintf(stderr, "opzioni può essere: \n");
+        fprintf(stderr, "	-e per codificare \n");
+        fprintf(stderr, "	-d per decodificare \n");
+        fprintf(stderr, "	-cbc per attivare cbc \n");
+        return -1;
     }
 
-	//questo è ancora da implementare
+    //questo è ancora da implementare
 
     xTea *coder= new xTea();
 

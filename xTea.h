@@ -5,40 +5,45 @@
  * Created on 24 febbraio 2011, 13.17
  */
 
-#ifndef _XTEA_H
-#define	_XTEA_H
+#pragma once
 
-#include <stdint.h>
-#include <cstdlib>
 #include <iostream>
-#include <cstring>
-#include <stdio.h>
+#include <fstream>
+
+/**
+* PCKS5 padding (https://www.ietf.org/rfc/rfc1423.txt https://www.di-mgt.com.au/cryptopad.html )
+*/
+class StreamPadder {
+  public:
+    StreamPadder(std::ifstream *stream);
+    ~StreamPadder();
+    int ReadBlockPad(uint64_t *blocco);
+    int ReadBlock(uint64_t *blocco);
+    void Close();
+    short UnPad(const char *data);
+  private:
+    std::ifstream *reader_;
+    short pad_ = 0;
+};
 
 class xTea {
-public:
+  public:
     static const uint64_t iv=0x1234567890abcdef;
     static const int round=64;
 
-    uint32_t *chiave;
     xTea();
-    xTea(const xTea& orig);
-    virtual ~xTea();
+    ~xTea();
 
-    bool setup(char *input, char*output, uint32_t *chiave);
-    //uint32_t* getkey(char *string);
-    bool encode();
-    bool decode();
-    bool CBCencode();
-    bool CBCdecode();
-
-private:
-    int nextblock(uint64_t &blocco);
-    int pos;
-    int size;
-    uint64_t oldblock;
-    FILE *input;
-    FILE *output;
+    bool Setup(const char *input, const char *output,const uint32_t *chiave);
+    bool Encode(bool cbc=false);
+    bool Decode(bool cbc=false);
+    bool Dup(bool pad);
+  private:
+    void encipher(uint64_t *blocco, bool cbc);
+    void decipher(uint64_t *blocco, bool cbc);
+    uint32_t chiave_[4];
+    uint64_t oldblock_;
+    std::ifstream reader_;
+    std::ofstream writer_;
 };
-
-#endif	/* _XTEA_H */
 

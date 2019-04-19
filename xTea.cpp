@@ -6,17 +6,21 @@
  */
 
 #include "xTea.h"
-#include <sys/stat.h>
-
+#include <fstream>
+#include <iostream>
+#include <ios>
+#include <array>
+#include <cassert>
 /**
  * Implementazione originale di David Wheeler e Roger Needham corretta in modo da utilizzare interi da 32bit su ogni architettura
  * @param num_rounds
  * @param v
  * @param k
  */
-void encipher(unsigned int num_rounds, uint32_t v[2], uint32_t const k[4]) {
+inline void Encipher(unsigned int num_rounds, uint64_t *blocco, uint32_t const k[4]) {
     unsigned int i;
-    uint32_t v0 = v[0], v1 = v[1], sum = 0, delta = 0x9E3779B9;
+    uint32_t* v = (uint32_t*)blocco;
+    uint32_t v0 = v[0], v1 = v[1], sum = 0, const delta = 0x9E3779B9;
     for (i = 0; i < num_rounds; i++) {
         v0 += (((v1 << 4) ^ (v1 >> 5)) + v1) ^ (sum + k[sum & 3]);
         sum += delta;
@@ -32,9 +36,10 @@ void encipher(unsigned int num_rounds, uint32_t v[2], uint32_t const k[4]) {
  * @param v
  * @param k
  */
-void decipher(unsigned int num_rounds, uint32_t v[2], uint32_t const k[4]) {
+inline void Decipher(unsigned int num_rounds, uint64_t *blocco, uint32_t const k[4]) {
     unsigned int i;
-    uint32_t v0 = v[0], v1 = v[1], delta = 0x9E3779B9, sum = delta*num_rounds;
+    uint32_t* v = (uint32_t*)blocco;
+    uint32_t v0 = v[0], v1 = v[1], const delta = 0x9E3779B9, sum = delta * num_rounds;
     for (i = 0; i < num_rounds; i++) {
         v1 -= (((v0 << 4) ^ (v0 >> 5)) + v0) ^ (sum + k[(sum >> 11) & 3]);
         sum -= delta;
@@ -47,15 +52,9 @@ void decipher(unsigned int num_rounds, uint32_t v[2], uint32_t const k[4]) {
 xTea::xTea() {
 }
 
-/**
- * Costruttore di copie
- * @param orig
- */
-xTea::xTea(const xTea& orig) {
-}
-
 xTea::~xTea() {
-    //nothing to do
+    reader_.close();
+    writer_.close();
 }
 
 /**
@@ -63,89 +62,140 @@ xTea::~xTea() {
  * @param input
  * @param output
  * @param chiave
- * @return 
+ * @return
  */
-bool xTea::setup(char *input, char *output, uint32_t *chiave) {
-    pos = 0;
-    oldblock = chiave[0]+ (chiave[1] >> 32);
+bool xTea::Setup(const char *input, const char *output, const uint32_t *chiave) {
+    oldblock_ = chiave[0]+ (chiave[1] >> 32);
+    this->reader_.open(input, std::ios::binary | std::ios::in);
+    this->writer_.open(output, std::ios::binary | std::ios::out);
+    memcpy(chiave_, chiave, 4 * sizeof(uint32_t));
+    return !(writer_.bad() || reader_.bad());
+}
 
-    struct stat results;
+bool xTea::Encode(bool cbc) {
+    uint64_t blocco;
+    char *data = (char*)&blocco;
+    uint32_t *pezzi;
+    pezzi = (uint32_t *)&blocco;
+    StreamPadder padder{ &reader_ };
+    short blockSize = padder.ReadBlockPad(&blocco);
+    while (blockSize > 0) {
+        encipher(&blocco, cbc);
+        writer_.write(data, sizeof(uint64_t));
+        blockSize = padder.ReadBlockPad(&blocco);
+    }
+    writer_.close();
+    return true;
+}
 
-    if (stat(input, &results) == 0) {
-        this->size = results.st_size;
+bool xTea::Decode(bool cbc) {
+    uint64_t blocco;
+    char *data = (char*)&blocco;
+    StreamPadder padder{ &reader_ };
+    short blockSize = padder.ReadBlock(&blocco);
+    while (blockSize > 0) {
+        assert(blockSize >= sizeof(uint64_t));
+        if (blockSize < sizeof(uint64_t))
+            return false; // This is bad! this file should be padded
+        decipher(&blocco, cbc);
+        short size = padder.UnPad(data);
+        writer_.write(data, size);
+        blockSize = padder.ReadBlock(&blocco);
+    }
+    writer_.close();
+    return true;
+}
+
+bool xTea::Dup(bool pad) {
+    uint64_t blocco;
+    char *data = (char*)&blocco;
+    uint32_t *pezzi;
+    pezzi = (uint32_t *)&blocco;
+    StreamPadder padder{ &reader_ };
+    if (pad) {
+        short blockSize = padder.ReadBlockPad(&blocco);
+        while (blockSize > 0) {
+            writer_.write(data, sizeof(uint64_t));
+            blockSize = padder.ReadBlockPad(&blocco);
+        }
+    } else {
+        short blockSize = padder.ReadBlock(&blocco);
+        while (blockSize > 0) {
+            std::cout << blockSize << std::endl;
+            assert(blockSize >= sizeof(uint64_t));
+            if (blockSize < sizeof(uint64_t))
+                return false; // This is bad! this file should be padded
+            short size = padder.UnPad(data);
+            writer_.write(data, size);
+            blockSize = padder.ReadBlock(&blocco);
+        }
+    }
+    writer_.close();
+    return true;
+}
+
+void xTea::encipher(uint64_t *blocco, bool cbc) {
+    Encipher(this->round, blocco, this->chiave_);
+    if (cbc) {
+        *blocco = *blocco ^ oldblock_;
+        oldblock_ = *blocco;
+    }
+}
+
+void xTea::decipher(uint64_t *blocco, bool cbc) {
+    if (cbc) {
+        uint64_t buffer = *blocco;
+        *blocco = *blocco ^ oldblock_;
+        Decipher(this->round, blocco, this->chiave_);
+        oldblock_ = buffer;
     } else
-        return false;
-    this->input = fopen(input, "rb");
-    this->output = fopen(output, "wb");
-    this->chiave = new uint32_t[4];
-    this->chiave[0] = chiave[0];
-    this->chiave[1] = chiave[1];
-    this->chiave[2] = chiave[2];
-    this->chiave[3] = chiave[3];
-
-    return true;
+        Decipher(this->round, blocco, this->chiave_);
 }
 
-int xTea::nextblock(uint64_t &blocco) {
-    blocco = 0x5f5f5f5f5f5f5f5f; // carattere _
-    int len = fread(&blocco, 1, sizeof (uint64_t), input);
-    return len;
+StreamPadder::StreamPadder(std::ifstream *stream) {
+    reader_ = stream;
 }
 
-bool xTea::encode() {
-    uint64_t blocco;
-    uint32_t *pezzi;
-    pezzi = (uint32_t *) & blocco;
-    while (this->nextblock(blocco) > 0) {
-        encipher(this->round, pezzi, chiave);
-        fwrite((void*) &blocco, 1, sizeof (blocco), output);
+StreamPadder::~StreamPadder() {
+    Close();
+}
+
+void StreamPadder::Close() {
+    pad_ = 0;
+    reader_->close();
+}
+
+short StreamPadder::UnPad(const char * data) {
+    reader_->peek();
+    if (reader_->eof()) {
+        short stub = data[sizeof(uint64_t) - 1];
+        std::cout << data << std::endl;
+        std::cout << stub << std::endl;
+        assert(sizeof(uint64_t) >= stub);
+        return sizeof(uint64_t) - stub;
     }
-    fclose(input);
-    fclose(output);
-    return true;
+    return sizeof(uint64_t);
 }
 
-bool xTea::decode() {
-    uint64_t blocco;
-    uint32_t *pezzi;
-    pezzi = (uint32_t *) & blocco;
-    while (this->nextblock(blocco) > 0) {
-        decipher(this->round, pezzi, chiave);
-        fwrite((void*) &blocco, 1, sizeof (blocco), output);
+int StreamPadder::ReadBlockPad(uint64_t *blocco) {
+    if (pad_ < 0) {
+        return -1;
     }
-    fclose(input);
-    fclose(output);
-    return true;
+    char *data = (char*)blocco;
+    short blockSize = ReadBlock(blocco);
+    pad_ = sizeof(uint64_t) - blockSize;
+    if(!reader_->eof())
+        return blockSize;
+    while (blockSize < sizeof(uint64_t)) {
+        data[blockSize] = pad_;
+        blockSize++;
+    }
+    pad_ = -1;
+    return blockSize;
 }
 
-bool xTea::CBCencode() {
-    uint64_t blocco;
-    uint32_t *pezzi;
-    pezzi = (uint32_t *) & blocco;
-    while (this->nextblock(blocco) > 0) {
-        encipher(this->round, pezzi, chiave);
-        blocco = blocco^oldblock;
-        fwrite((void*) &blocco, 1, sizeof (blocco), output);
-        oldblock = blocco;
-    }
-    fclose(input);
-    fclose(output);
-    return true;
-}
-
-bool xTea::CBCdecode() {
-    uint64_t blocco;
-    uint64_t buffer;
-    uint32_t *pezzi;
-    pezzi = (uint32_t *) & blocco;
-    while (this->nextblock(blocco) > 0) {
-        buffer = blocco;
-        blocco = blocco^oldblock;
-        decipher(this->round, pezzi, chiave);
-        fwrite((void*) &blocco, 1, sizeof (blocco), output);
-        oldblock = buffer;
-    }
-    fclose(input);
-    fclose(output);
-    return true;
+int StreamPadder::ReadBlock(uint64_t * blocco) {
+    char *data = (char*)blocco;
+    reader_->read(data, sizeof(uint64_t));
+    return reader_->gcount();
 }
