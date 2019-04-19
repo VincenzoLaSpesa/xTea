@@ -14,7 +14,6 @@
 
 #define DEBUG
 
-#include "functions.h"
 #include "xTea.h"
 //using namespace std;
 
@@ -108,7 +107,7 @@ int main(int argc, char *argv[]) {
 
     //questo è ancora da implementare
 
-    xTea *coder= new xTea();
+	xTea xtea{};
 
 #endif
     return EXIT_SUCCESS;
