@@ -1,47 +1,45 @@
 name: Build xTea Release
+
 on:
-  push:
-    tags:
-      - v*
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'     
+        required: true
+        default: 'warning'
+      tags:
+        description: 'Manual run' 
+
 jobs:
   build-linux:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
-    - name: Linux Build
+    - uses: actions/checkout@v2
+    - name: make
+      run: make
+    - name: make all
       run: make all
-      shell: bash
   build-windows-x86_64:
     runs-on: windows-latest
     steps:
-    - uses: numworks/setup-msys2@v1
-    - run: git config --global core.autocrlf false
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
+    - name: Add msbuild to PATH
+      uses: microsoft/setup-msbuild@v1
     - name: Prepare build environment
       run: cp ./ci/xTea.vcxproj .
     - name: Build xTea for Windows x86_64
-      run: .\MSBuild.exe xTea.vcxproj
+      run: |
+        msbuild.exe xTea.vcxproj /p:platform="Any CPU" /p:configuration="Release"
+        tree /f
     - name: Upload Windows x86_64 build
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v2
       with:
         name: windows-x86_64-build
-        path: windows/xTea-windows-x86_64.zip
+        path: Release/*.exe
   create-release:
     needs: [ build-linux, build-windows-x86_64 ]
     runs-on: ubuntu-latest
     steps:
-    - name: Get the version
-      id: get_version
-      run: echo ::set-output name=VERSION::$(echo $GITHUB_REF | cut -d / -f 3)
-    - uses: actions/checkout@v1
-    - id: read_release_notes
-      run: |
-        CONTENTS=`cat changelog/${{ steps.get_version.outputs.VERSION }}.txt`
-        CONTENTS="${CONTENTS//'%'/'%25'}"
-        CONTENTS="${CONTENTS//$'\n'/'%0A'}"
-        CONTENTS="${CONTENTS//$'\r'/'%0D'}" 
-        echo "::set-output name=release_notes::${CONTENTS}"
-      shell: bash
     - name: Download Windows x86_64 Build Asset
       uses: actions/download-artifact@v1
       with:
@@ -63,6 +61,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: windows-x86_64-build/xTea-x86_64.zip
+        asset_path: windows-x86_64-build/xTea.exe
         asset_name: xTea-x86_64-${{ steps.get_version.outputs.VERSION }}.zip
         asset_content_type: application/zip
