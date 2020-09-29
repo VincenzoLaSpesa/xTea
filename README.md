@@ -17,3 +17,4 @@ g++ main.cpp main.cpp xTea.cpp -o xTea
 
 or use the makefile
 
+![C/C++ CI](https://github.com/VincenzoLaSpesa/xTea/workflows/C/C++%20CI/badge.svg)

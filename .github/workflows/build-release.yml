@@ -1,16 +1,24 @@
 name: Build xTea Release
+
 on:
-  push:
-    tags:
-      - v*
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'     
+        required: true
+        default: 'warning'
+      tags:
+        description: 'Manual run' 
+
 jobs:
   build-linux:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v1
-    - name: Linux Build
+    - uses: actions/checkout@v2
+    - name: make
+      run: make
+    - name: make all
       run: make all
-      shell: bash
   build-windows-x86_64:
     runs-on: windows-latest
     steps:
