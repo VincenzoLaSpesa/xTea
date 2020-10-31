@@ -36,18 +36,6 @@ jobs:
     needs: [ build-linux, build-windows-x86_64 ]
     runs-on: ubuntu-latest
     steps:
-    - name: Get the version
-      id: get_version
-      run: echo ::set-output name=VERSION::$(echo $GITHUB_REF | cut -d / -f 3)
-    - uses: actions/checkout@v1
-    - id: read_release_notes
-      run: |
-        CONTENTS=`cat changelog/${{ steps.get_version.outputs.VERSION }}.txt`
-        CONTENTS="${CONTENTS//'%'/'%25'}"
-        CONTENTS="${CONTENTS//$'\n'/'%0A'}"
-        CONTENTS="${CONTENTS//$'\r'/'%0D'}" 
-        echo "::set-output name=release_notes::${CONTENTS}"
-      shell: bash
     - name: Download Windows x86_64 Build Asset
       uses: actions/download-artifact@v1
       with:
