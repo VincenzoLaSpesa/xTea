@@ -28,7 +28,7 @@ jobs:
         msbuild.exe xTea.vcxproj /p:platform="Any CPU" /p:configuration="Release"
         tree /f
     - name: Upload Windows x86_64 build
-      uses: actions/upload-artifact@v1
+      uses: actions/upload-artifact@v2
       with:
         name: windows-x86_64-build
         path: Release/*.exe
