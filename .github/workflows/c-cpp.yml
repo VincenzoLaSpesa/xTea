@@ -25,9 +25,8 @@ jobs:
       run: cp ./ci/xTea.vcxproj .
     - name: Build xTea for Windows x86_64
       run: |
-        mkdir windows-x86_64-build
-        msbuild.exe xTea.vcxproj /p:platform="Any CPU" /p:configuration="Release" /p:OutputPath=.\windows-x86_64-build
-        tree
+        msbuild.exe xTea.vcxproj /p:platform="Any CPU" /p:configuration="Release"
+        tree /f
     - name: Upload Windows x86_64 build
       uses: actions/upload-artifact@v1
       with:
