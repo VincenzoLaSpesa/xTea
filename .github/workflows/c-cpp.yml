@@ -20,13 +20,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Add msbuild to PATH
-      uses: microsoft/setup-msbuild@v1.0.2
-      with:
-        vs-version: '[16.4,16.5)'
+      uses: microsoft/setup-msbuild@v1
     - name: Prepare build environment
       run: cp ./ci/xTea.vcxproj .
     - name: Build xTea for Windows x86_64
-      run: MSBuild.exe xTea.vcxproj
+      run: msbuild.exe xTea.vcxproj /p:platform="Any CPU" /p:configuration="Release"
     - name: Upload Windows x86_64 build
       uses: actions/upload-artifact@v1
       with:
