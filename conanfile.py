@@ -9,7 +9,7 @@ class XTeaLibConan(ConanFile):
     # Optional metadata
     license = "MIT"
     author = "Vincenzo La Spesa vincenzolaspesa@gmail.com"
-    url = "https://github.com/VincenzoLaSpesa-Eaton/xTea"
+    url = "https://github.com/VincenzoLaSpesa/xTea"
     description = "A naive XTEA (eXtended TEA) implementation."
     topics = ("cryptography")
 
