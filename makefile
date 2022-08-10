@@ -3,14 +3,14 @@ all: target
 debug: CXXFLAGS = -DDEBUG -g
 debug: target
 
-target: main.o xTea.o
-	$(CXX) main.o xTea.o -o xTea.bin
+target: xTea_console.o xTea.o
+	$(CXX) xTea_console.o xTea.o -o xTea.bin
 
-main.o: main.cpp
-	$(CXX) $(CXXFLAGS) -c main.cpp
+xTea_console.o: xTea_console.cpp
+	$(CXX) $(CXXFLAGS) -c xTea_console.cpp
 
-xTea.o: xTea.cpp
-	$(CXX) $(CXXFLAGS) -c xTea.cpp
+xTea.o: ./src/xTea.cpp
+	$(CXX) $(CXXFLAGS) -c ./src/xTea.cpp
 
 clean:
 	rm -rf *.o 
