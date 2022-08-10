@@ -22,7 +22,7 @@
 
 //#define DEBUG
 
-#include "xTea.h"
+#include "./src/xTea.h"
 
 //http://stackoverflow.com/a/868894
 
