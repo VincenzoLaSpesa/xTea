@@ -44,6 +44,8 @@ jobs:
       uses: actions/download-artifact@v1
       with:
         name: windows-x86_64-build
+    - name: Display structure of downloaded files
+      run: ls -R
     - name: Create Release
       id: create_release
       uses: actions/create-release@latest
@@ -62,5 +64,5 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: windows-x86_64-build/xTea.exe
-        asset_name: xTea-x86_64-${{ steps.get_version.outputs.VERSION }}.zip
+        asset_name: xTea-x86_64_${{ GITHUB_SHA }}.zip
         asset_content_type: application/zip
