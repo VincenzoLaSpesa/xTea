@@ -44,8 +44,6 @@ jobs:
       uses: actions/download-artifact@v1
       with:
         name: windows-x86_64-build
-    - name: Display structure of downloaded files
-      run: ls -R
     - name: Create Release
       id: create_release
       uses: actions/create-release@latest
@@ -66,3 +64,8 @@ jobs:
         asset_path: windows-x86_64-build
         asset_name: xTea-x86_64_${{ env.GITHUB_SHA }}.zip
         asset_content_type: application/zip
+    - name: Upload binary
+      uses: actions/upload-artifact@v1
+      with:
+        name: upload binary
+        path: windows-x86_64-build        
