@@ -1,4 +1,4 @@
-name: Build xTea Release
+name: Build xTea Release snapshot
 
 on:
   workflow_dispatch:
