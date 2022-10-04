@@ -63,6 +63,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: windows-x86_64-build/xTea.exe
-        asset_name: xTea-x86_64_${{ GITHUB_SHA }}.zip
+        asset_path: windows-x86_64-build
+        asset_name: xTea-x86_64_${{ env.GITHUB_SHA }}.zip
         asset_content_type: application/zip
