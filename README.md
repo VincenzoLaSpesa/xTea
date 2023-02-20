@@ -21,6 +21,16 @@ Just use the makefile, or cmake.
 
 Currently I mostly use this repository for experimenting with GitHub actions and package management in c++.
 
+## Conan package
+
+This repository contains a conan package and a test package for it.
+For creating the package use something like `conan create . demo/testing` that will build the package and copy it to the local cache ( `~/.conan/` usually) using the current default toolchain
+
+
+### Conan references
+
+-   https://docs.conan.io/en/latest/creating_packages/package_repo.html
+
 ## License
 
 This software is released under the MIT License 
