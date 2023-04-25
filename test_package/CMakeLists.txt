@@ -4,4 +4,4 @@ project(PackageTest CXX)
 find_package(xTeaLib CONFIG REQUIRED)
 
 add_executable(example src/example.cpp)
-target_link_libraries(example xTeaLib::xTeaLib)
+target_link_libraries(example xtealib::xtealib)

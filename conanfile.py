@@ -3,7 +3,7 @@ from conan.tools.cmake import CMakeToolchain, CMake, cmake_layout
 
 
 class XTeaLibConan(ConanFile):
-    name = "xTeaLib"
+    name = "xtealib"
     version = "0.1"
 
     # Optional metadata
