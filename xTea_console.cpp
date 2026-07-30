@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 
-  xTea xtea{};
+  xTeaFileProcessor xtea{};
   int flag = xtea.Setup(input_file.c_str(), output_file.c_str(), k);
   if (flag == -1) {
     std::cerr << "Unable to open the input file" << std::endl;
@@ -140,13 +140,13 @@ int main(int argc, char *argv[]) {
   if (encode) {
     if (!xtea.Encode(cbc))
       std::cerr << "Error while encoding" << std::endl;
-    return false;
+    return -1;
   }
   if (decode) {
     if (!xtea.Decode(cbc))
       std::cerr << "Error while decoding" << std::endl;
-    return false;
+    return -1;
   }
 #endif
-  return true;
+  return 0;
 };
